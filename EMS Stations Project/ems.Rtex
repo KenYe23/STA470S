@@ -1,0 +1,397 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Vance Co Simulated EMS Response Data %%
+%%              knitr doc               %%
+%% Last Modified  09/05/23 by ESI.      %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{fullpage}
+\usepackage{setspace}
+%\usepackage{comment} 
+%\usepackage{rotating}
+\usepackage{color}
+%\usepackage{array}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{bm}
+%\usepackage{filecontents}
+\newcommand{\rinline}[1]{Error w/ Knitr}
+\definecolor{red}{rgb}{1.0000000,0.0000000,0.0000000}
+\definecolor{orange}{rgb}{1.0000000,0.6470588,0.0000000}
+\definecolor{green}{rgb}{0.0000000,1.0000000,0.0000000}
+\definecolor{darkgreen}{rgb}{0.0000000,0.3921569,0.0000000}
+\definecolor{lightblue}{rgb}{0.6784314,0.8470588,0.9019608}
+\definecolor{blue}{rgb}{0.0000000,0.0000000,1.0000000}
+\definecolor{navy}{rgb}{0.0000000,0.0000000,0.5000000}
+\definecolor{purple}{rgb}{0.6274510,0.1254902,0.9411765}
+\definecolor{maroon}{rgb}{0.6901961,0.1882353,0.3764706}
+ 
+\title{Analysis of Simulated Vance County EMS Response Data}
+%\author{Author1, Author2, Author3}
+\date{\today}
+\begin{document}
+%\SweaveOpts{concordance=TRUE}
+\maketitle
+
+\noindent In what follows, we carry out a basic analysis of the
+simulated data to test the \texttt{R} library \texttt{mapsapi}'s
+Google API interface.
+
+\section{Input Data; Basic Data Processing}
+
+Here we import the data elements, carry out some
+basic data processing and display a few summaries of the data set:
+
+%% begin.rcode setup
+%  rm(list=ls()) ## Completely clear the workspace.
+%  opts_chunk$set(fig.path='./figs/',cache.path='./cache/')
+%  library(mapsapi)
+%  api.key<-scan("../api.key",what=" ")
+%% end.rcode
+
+%% begin.rcode import
+%  ##x<-read.csv("VanceModelDataset.csv")
+%  x<-read.csv("VanceMockData1.csv")
+%  head(x)
+%  summary(x)
+%% end.rcode
+
+\subsection{Get Station Coordinates}
+
+%% begin.rcode
+%  gps.cent<-unique(x$VEHCGPS[x$BASE.NAME=="Company 9"])
+%  gps.south<-unique(x$VEHCGPS[x$BASE.NAME=="Company 1"])
+%  gps.centN<-as.numeric(strsplit(gps.cent,",")[[1]])
+%  gps.southN<-as.numeric(strsplit(gps.south,",")[[1]])
+%  ## First option for a north station
+%  gps.northNN<-c(36.430596, -78.431689) ##NN=Near North
+%  ##Second option for north station
+%  gps.northFN<-c(36.495537112943886,-78.42090194629898) ##FN=Far North
+%  ## GPS coordinates of Maria Parham Hospital
+%  gps.hospital<-c(36.33089064918619, -78.44930886477614)
+%% end.rcode
+
+Destination hospital coordinates:
+
+%% begin.rcode
+%  x$REC.LON<-rep(NA,nrow(x))
+%  x$REC.LAT<-rep(NA,nrow(x))
+%  x$REC.LON[x$REC.NAME=="Maria Parham Hospital"]<-(-78.44930886477614)
+%  x$REC.LAT[x$REC.NAME=="Maria Parham Hospital"]<-(36.33089064918619)
+%  x$REC.LON[x$REC.NAME=="Granville Medical Center"]<-(-78.59367173834997)
+%  x$REC.LAT[x$REC.NAME=="Granville Medical Center"]<-(36.33043072571129)
+%  x$REC.LON[x$REC.NAME=="Duke Health Duke University Medical Center"]<-(-78.93687608445487)
+%  x$REC.LAT[x$REC.NAME=="Duke Health Duke University Medical Center"]<-(36.00643609468812)
+%% end.rcode
+
+
+Drop cases with missing call GPS coordinates:
+%% begin.rcode
+% table(is.na(x$REF.GPS.LON))
+% x<-x[!is.na(x$REF.GPS.LON),]
+%% end.rcode
+
+\subsection{Format Time Character Strings as Times}
+
+\subsubsection{Google Needs Current/Future Times}
+
+Change the year from 1789 to 2024.
+
+%% begin.rcode, fig.width=4.5, fig.height=4.0
+%  x$DT.DISP<-sub("1789","2024",x$DT.DISP)
+%  x$DT.ENROUTE<-sub("1789","2024",x$DT.ENROUTE)
+%  x$DT.ARRIVE<-sub("1789","2024",x$DT.ARRIVE)
+%  x$DT.LVREF<-sub("1789","2024",x$DT.LVREF)
+%  x$DT.ARVREC<-sub("1789","2024",x$DT.ARVREC)
+%  x$DT.AVAILABLE<-sub("1789","2024",x$DT.AVAILABLE)
+%% end.rcode
+
+\subsubsection{Google Needs Times in POSIXct Format}
+
+Convert times importated as character strings to times formated as R
+POSIX values.
+
+%% begin.rcode, fig.width=4.5, fig.height=4.0
+%  x$DT.DISP<-strptime(x$DT.DISP,format="%m/%d/%Y %H:%M:%S",tz="EST")
+%  x$DT.ENROUTE<-strptime(x$DT.ENROUTE,format="%m/%d/%Y %H:%M:%S",tz="EST")
+%  x$DT.ARRIVE<-strptime(x$DT.ARRIVE,format="%m/%d/%Y %H:%M:%S",tz="EST")
+%  x$DT.LVREF<-strptime(x$DT.LVREF,format="%m/%d/%Y %H:%M:%S",tz="EST")
+%  x$DT.ARVREC<-strptime(x$DT.ARVREC,format="%m/%d/%Y %H:%M:%S",tz="EST")
+%  x$DT.AVAILABLE<-strptime(x$DT.AVAILABLE,format="%m/%d/%Y %H:%M:%S",tz="EST")
+%% end.rcode
+
+%\newpage
+\section{Estimate Response Travel Times from Each Station}
+
+Compute travel times between the two existing and two proposed station
+locations and each destination.  Do so assuming the pessimistic, best
+guess and optimistic traffic assumptions, in turn.  In addition, save
+the `green light' duration and distance.
+
+\subsection{Best Guess Scenario}
+
+%% begin.rcode callAPI, cache=TRUE, fig.width=5.0, fig.height=3.75 
+%  travelTimeBG<-NULL
+%  distance<-NULL
+%  durationGL<-NULL
+%  for (i in 1:nrow(x)){
+%      api.out<-mp_matrix(
+%          origins = rbind(gps.southN[c(2,1)],gps.centN[c(2,1)],
+%                          gps.northNN[c(2,1)],gps.northFN[c(2,1)]),
+%          destinations = cbind(x$REF.GPS.LON,x$REF.GPS.LAT)[i,],
+%          mode="driving",
+%          traffic_model="best_guess",
+%          departure_time=as.POSIXct(x$DT.ENROUTE[i]),  ##as POSIXct
+%          ##departure_time=Sys.time() + as.difftime(4, units = "hours"), 
+%          key = api.key,
+%          quiet = TRUE)
+%      times.out<-mp_get_matrix(api.out,
+%                                value = "duration_in_traffic_s")
+%      gl.out<-mp_get_matrix(api.out,
+%                                value = "duration_s")
+%      dist.out<-mp_get_matrix(api.out,
+%                                value = "distance_m")
+%      travelTimeBG<-rbind(travelTimeBG,matrix(times.out,nrow=1))
+%      distance<-rbind(distance,matrix(dist.out,nrow=1))
+%      durationGL<-rbind(durationGL,matrix(gl.out,nrow=1))
+%      Sys.sleep(0.5)
+%  }
+%% end.rcode
+
+Google API computed response travel times from each station, measured
+in seconds, where `So' refers to the south station, `Ce' refers to the
+central, `NN' to the proposed near north station and `FN' to the
+proposed far north station. `BG' refers to the `best guess' scenario.
+
+%% begin.rcode, fig.width=5.0, fig.height=3.75
+%  colnames(travelTimeBG)<-c("eTT.BG.So","eTT.BG.Ce","eTT.BG.NN","eTT.BG.FN")
+%  colnames(distance)<-c("Dist.So","Dist.Ce","Dist.NN","Dist.FN")
+%  colnames(durationGL)<-c("eTT.GL.So","eTT.GL.Ce","eTT.GL.NN","eTT.GL.FN")
+%  head(travelTimeBG)
+%  summary(travelTimeBG)
+%% end.rcode
+
+
+\subsection{Pessimistic Scenario}
+
+%% begin.rcode callAPIp, cache=TRUE, fig.width=5.0, fig.height=3.75 
+%  travelTimePe<-NULL
+%  for (i in 1:nrow(x)){
+%      api.out<-mp_matrix(
+%          origins = rbind(gps.southN[c(2,1)],gps.centN[c(2,1)],
+%                          gps.northNN[c(2,1)],gps.northFN[c(2,1)]),
+%          destinations = cbind(x$REF.GPS.LON,x$REF.GPS.LAT)[i,],
+%          mode="driving",
+%          traffic_model="pessimistic",
+%          departure_time=as.POSIXct(x$DT.ENROUTE[i]),  ##as POSIXct
+%          ##departure_time=Sys.time() + as.difftime(4, units = "hours"), 
+%          key = api.key,
+%          quiet = TRUE)
+%      times.out<-mp_get_matrix(api.out,
+%                                value = "duration_in_traffic_s")
+%      travelTimePe<-rbind(travelTimePe,matrix(times.out,nrow=1))
+%      Sys.sleep(0.5)
+%  }
+%% end.rcode
+
+Google API computed response travel times from each station, measured
+in seconds; `Pe' refers to the `best guess' scenario.
+
+%% begin.rcode, fig.width=5.0, fig.height=3.75
+%  colnames(travelTimePe)<-c("eTT.Pe.So","eTT.Pe.Ce","eTT.Pe.NN","eTT.Pe.FN")
+%  head(travelTimePe)
+%  summary(travelTimePe)
+%% end.rcode
+
+
+\subsection{Optimistic Scenario}
+
+%% begin.rcode callAPIo, cache=TRUE, fig.width=5.0, fig.height=3.75 
+%  travelTimeOp<-NULL
+%  for (i in 1:nrow(x)){
+%      api.out<-mp_matrix(
+%          origins = rbind(gps.southN[c(2,1)],gps.centN[c(2,1)],
+%                          gps.northNN[c(2,1)],gps.northFN[c(2,1)]),
+%          destinations = cbind(x$REF.GPS.LON,x$REF.GPS.LAT)[i,],
+%          mode="driving",
+%          traffic_model="optimistic",
+%          departure_time=as.POSIXct(x$DT.ENROUTE[i]),  ##as POSIXct
+%          ##departure_time=Sys.time() + as.difftime(4, units = "hours"), 
+%          key = api.key,
+%          quiet = TRUE)
+%      times.out<-mp_get_matrix(api.out,
+%                                value = "duration_in_traffic_s")
+%      travelTimeOp<-rbind(travelTimeOp,matrix(times.out,nrow=1))
+%      Sys.sleep(0.5)
+%  }
+%% end.rcode
+
+Google API computed response travel times from each station, measured
+in seconds; `Op' refers to the `best guess' scenario.
+
+%% begin.rcode, fig.width=5.0, fig.height=3.75
+%  colnames(travelTimeOp)<-c("eTT.Op.So","eTT.Op.Ce","eTT.Op.NN","eTT.Op.FN")
+%  head(travelTimeOp)
+%  summary(travelTimeOp)
+%% end.rcode
+
+
+\subsection{Observed Times}
+
+Observed times, measured in seconds:
+
+%% begin.rcode, fig.width=4.5, fig.height=4.0
+% ## Response Time, Station to Scene
+% x$observedTT<-difftime(x$DT.ARRIVE,x$DT.ENROUTE,units="secs")
+% ## Duration on Scene
+% x$onSceneDur<-difftime(x$DT.LVREF,x$DT.ARRIVE,units="secs")
+% ## Scene to Hospital Travel Time
+% x$toHospitalTT<-difftime(x$DT.ARVREC,x$DT.LVREF,units="secs")
+% ## Duration at Hospital
+% x$atHospitalDur<-difftime(x$DT.AVAILABLE,x$DT.ARVREC,units="secs")
+% ## Time from leaving scene to clear
+% x$arriveToClearTime<-difftime(x$DT.AVAILABLE,x$DT.ARRIVE,units="secs")
+%% end.rcode
+
+\newpage
+\section{Estimate Travel Times to Hospital}
+
+Compute travel times between the call locations and destination
+hospital under each of the traffic scenarios.  Save green light times
+and distances.
+
+\subsection{Best Guess Traffic Model}
+
+%% begin.rcode callAPI2, cache=TRUE, fig.width=5.0, fig.height=3.75 
+%  travelTime2bg<-rep(NA,nrow(x))
+%  hosp.GL<-rep(NA,nrow(x))
+%  hosp.Dist<-rep(NA,nrow(x))
+%  for (i in 1:nrow(x)){
+%    if (!is.na(x$REC.LON[i])){
+%      api.out2<-mp_matrix(
+%        origins = cbind(x$REF.GPS.LON,x$REF.GPS.LAT)[i,],
+%        destinations = cbind(x$REC.LON,x$REC.LAT)[i,],
+%        mode="driving", 
+%        traffic_model="best_guess",
+%        departure_time=as.POSIXct(x$DT.LVREF[i]),  ##as POSIXct
+%        ##departure_time=Sys.time() + as.difftime(4, units = "hours"), 
+%        key = api.key,
+%        quiet = TRUE
+%      )
+%      travelTime2bg[i]<-mp_get_matrix(api.out2,
+%                                    value = "duration_in_traffic_s")
+%      hosp.GL[i]<-mp_get_matrix(api.out2,
+%                                value = "duration_s")
+%      hosp.Dist[i]<-mp_get_matrix(api.out2,
+%                                value = "distance_m")
+%      Sys.sleep(0.5)
+%    }   
+%  }
+%% end.rcode
+
+
+\subsection{Pessimistic Traffic Model}
+
+%% begin.rcode callAPI2p, cache=TRUE, fig.width=5.0, fig.height=3.75 
+%  travelTime2pe<-rep(NA,nrow(x))
+%  for (i in 1:nrow(x)){
+%    if (!is.na(x$REC.LON[i])){
+%      api.out2<-mp_matrix(
+%        origins = cbind(x$REF.GPS.LON,x$REF.GPS.LAT)[i,],
+%        destinations = cbind(x$REC.LON,x$REC.LAT)[i,],
+%        mode="driving", 
+%        traffic_model="pessimistic",
+%        departure_time=as.POSIXct(x$DT.LVREF[i]),  ##as POSIXct
+%        ##departure_time=Sys.time() + as.difftime(4, units = "hours"), 
+%        key = api.key,
+%        quiet = TRUE
+%      )
+%      travelTime2pe[i]<-mp_get_matrix(api.out2,
+%                                    value = "duration_in_traffic_s")
+%      Sys.sleep(0.5)
+%    }   
+%  }
+%% end.rcode
+
+
+\subsection{Optimistic Traffic Model}
+
+%% begin.rcode callAPI2o, cache=TRUE, fig.width=5.0, fig.height=3.75 
+%  travelTime2op<-rep(NA,nrow(x))
+%  for (i in 1:nrow(x)){
+%    if (!is.na(x$REC.LON[i])){ 
+%      api.out2<-mp_matrix(
+%        origins = cbind(x$REF.GPS.LON,x$REF.GPS.LAT)[i,],
+%        destinations = cbind(x$REC.LON,x$REC.LAT)[i,],
+%        mode="driving", 
+%        traffic_model="optimistic",
+%        departure_time=as.POSIXct(x$DT.LVREF[i]),  ##as POSIXct
+%        ##departure_time=Sys.time() + as.difftime(4, units = "hours"), 
+%        key = api.key,
+%        quiet = TRUE
+%      )
+%      travelTime2op[i]<-mp_get_matrix(api.out2,
+%                                    value = "duration_in_traffic_s")
+%      Sys.sleep(0.5)
+%    }   
+%  }
+%% end.rcode
+
+
+\section{Assemble Travel Time Estimates}
+
+%% begin.rcode, fig.width=5.0, fig.height=3.75
+%  apiEstimates<-cbind(distance,durationGL,
+%                      travelTimePe,travelTimeBG,travelTimeOp,
+%                      hosp.Dist,hosp.GL,
+%                      eTT.Pe.Hosp=travelTime2pe,
+%                      eTT.BG.Hosp=travelTime2bg,
+%                      eTT.Op.Hosp=travelTime2op)
+%  head(apiEstimates)
+%% end.rcode
+
+\subsection{Parsing the API--Computed Column Names}
+
+\begin{itemize}
+\item \textbf{So} indicates the existing south EMS station
+\item \textbf{Ce} indicates the existing central  EMS station
+\item \textbf{NN} indicates the proposed near--north EMS station
+\item \textbf{FN} indicates the proposed far--north EMS station
+\item \textbf{Dist} indicates distance travelled in meters.
+\item \textbf{eTT} indicates an estimated travel time.
+\item \textbf{GL} is the ``green light'' distance.
+\item \textbf{Pe} is the pessimistic travel time in traffic.
+\item \textbf{BG} is the best--guess travel time in traffic.
+\item \textbf{Op} is the optimistic travel time in traffic.
+\item \textbf{Hosp} is the hospital used, if such a trip is made.
+\end{itemize}
+
+\subsection{Export Data Set for EDA}
+
+%% begin.rcode, fig.width=5.0, fig.height=3.75
+%  x<-cbind(x,apiEstimates)
+%  save(x,file="emsData.RData")
+%  gc(); save.image()
+%% end.rcode
+
+
+\end{document}
+
+
+\begin{figure}[!hb]
+\begin{center}
+% trim = left bottom right top
+\includegraphics[width=6.5in,page=2, trim=1.0in 5.50in 1.0in 0.95in,
+  clip]{Tables13Oct21.pdf}
+\end{center}
+\end{figure}
+
+\begin{figure}[!hb]
+\begin{center}
+% trim = left bottom right top
+\includegraphics[width=7.5in,page=1, trim=0.0in 4.0in 2.0in 0.5in,clip]{histoPathData.pdf}
+\end{center}
+\end{figure}
+
+
+
