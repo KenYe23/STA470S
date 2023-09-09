@@ -5,12 +5,50 @@ date: '`r Sys.Date()`'
 output: pdf_document
 ---
 
-```{r load data}
+# Load Data
+
+```{r}
 # make sure you are in the EMS Stations Project directory
-load('./Data/emsData.RData')
 # alternatively, click the emsData.RData file to load it into your global environment
+load("./Data/emsData.RData")
+ls()
 ```
 
-```{r glimpse data}
+```{r}
 head(x)
+```
+
+```{r}
+colnames(x)
+```
+
+# EDA
+
+## Response Time (Station to Scene)
+
+```{r}
+# observed response time distribution
+x$observedTT_numeric <- as.numeric(x$observedTT)
+# remove rows with NA values in the observedTT_numeric column
+x <- x[!is.na(x$observedTT_numeric), ]
+summary(x$observedTT_numeric)
+```
+
+```{r}
+# observed response time histogram
+hist(x$observedTT_numeric)
+```
+
+```{r}
+# observed time boxplot
+boxplot(x$observedTT_numeric)
+```
+
+```{r}
+# for each record, extract Google map API estimation based on observed base and destination
+# goal is to compare with the observed response time
+x$eTT.GL <- ifelse(x$BASE.NAME == "Company 1", x$eTT.GL.So, x$eTT.GL.Ce)
+x$eTT.Pe <- ifelse(x$BASE.NAME == "Company 1", x$eTT.Pe.So, x$eTT.Pe.Ce)
+x$eTT.BG <- ifelse(x$BASE.NAME == "Company 1", x$eTT.BG.So, x$eTT.BG.Ce)
+x$eTT.Op <- ifelse(x$BASE.NAME == "Company 1", x$eTT.Op.So, x$eTT.Op.Ce)
 ```
