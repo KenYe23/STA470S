@@ -1,17 +1,25 @@
 ---
 title: "EDA"
-author: "Ejay, Gorden, Ken"
+author: "Ken Ye, Ejay Lin, Gorden Gao"
 date: '`r Sys.Date()`'
 output: pdf_document
 ---
 
-# Load Data
+# Load Libraries & Data
+
+```{r setup}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+```
 
 ```{r}
 # make sure you are in the EMS Stations Project directory
 # alternatively, click the emsData.RData file to load it into your global environment
 load("./Data/emsData.RData")
-ls()
 ```
 
 ```{r}
@@ -24,31 +32,139 @@ colnames(x)
 
 # EDA
 
-## Response Time (Station to Scene)
+## Observed Response Time
 
 ```{r}
-# observed response time distribution
+# observed response time distribution 
 x$observedTT_numeric <- as.numeric(x$observedTT)
-# remove rows with NA values in the observedTT_numeric column
-x <- x[!is.na(x$observedTT_numeric), ]
+# remove rows with NA and 0 values in the observedTT_numeric column
+x <- x[!is.na(x$observedTT_numeric) & x$observedTT_numeric != 0, ]
 summary(x$observedTT_numeric)
 ```
 
 ```{r}
 # observed response time histogram
-hist(x$observedTT_numeric)
+hist(x$observedTT_numeric, 
+     main = "Distribution of Observed Response Time", 
+     xlab = "Time (s)", 
+     ylab = "Frequency")
 ```
 
 ```{r}
-# observed time boxplot
-boxplot(x$observedTT_numeric)
+# observed response time boxplot
+boxplot(x$observedTT_numeric,
+        main = "Distribution of Observed Response Time", 
+        ylab = "Time (s)")
 ```
+
+## Comparison with Estimated Response Time
+
+### Visualization
 
 ```{r}
 # for each record, extract Google map API estimation based on observed base and destination
-# goal is to compare with the observed response time
 x$eTT.GL <- ifelse(x$BASE.NAME == "Company 1", x$eTT.GL.So, x$eTT.GL.Ce)
 x$eTT.Pe <- ifelse(x$BASE.NAME == "Company 1", x$eTT.Pe.So, x$eTT.Pe.Ce)
 x$eTT.BG <- ifelse(x$BASE.NAME == "Company 1", x$eTT.BG.So, x$eTT.BG.Ce)
 x$eTT.Op <- ifelse(x$BASE.NAME == "Company 1", x$eTT.Op.So, x$eTT.Op.Ce)
+```
+
+```{r}
+# compare observed with green light
+df1 <- data.frame(category = rep(c("Obs", "GL"), each = length(x$observedTT_numeric)), 
+                  value = c(x$observedTT_numeric, x$eTT.GL))
+                 
+ggplot(df1, aes(x = value, fill = category)) +
+  geom_histogram(position = "identity", alpha = 0.5) +
+  labs(title = "Observed Response Time vs Green Light Estimation", 
+       x = "Time (s)", 
+       y = "Frequency") 
+```
+
+```{r}
+# compare observed with pessimistic
+df2 <- data.frame(category = rep(c("Obs", "Pe"), each = length(x$observedTT_numeric)), 
+                  value = c(x$observedTT_numeric, x$eTT.Pe))
+                 
+ggplot(df2, aes(x = value, fill = category)) +
+  geom_histogram(position = "identity", alpha = 0.5) +
+  labs(title = "Observed Response Time vs Pessimistic Estimation", 
+       x = "Time (s)", 
+       y = "Frequency")
+```
+
+```{r}
+# compare observed with best guess
+df3 <- data.frame(category = rep(c("Obs", "BG"), each = length(x$observedTT_numeric)), 
+                  value = c(x$observedTT_numeric, x$eTT.BG))
+                 
+ggplot(df3, aes(x = value, fill = category)) +
+  geom_histogram(position = "identity", alpha = 0.5) +
+  labs(title = "Observed Response Time vs Best Guess Estimation", 
+       x = "Time (s)", 
+       y = "Frequency")
+```
+
+```{r}
+# compare observed with optimistic
+df4 <- data.frame(category = rep(c("Obs", "Op"), each = length(x$observedTT_numeric)), 
+                  value = c(x$observedTT_numeric, x$eTT.Op))
+                 
+ggplot(df4, aes(x = value, fill = category)) +
+  geom_histogram(position = "identity", alpha = 0.5) +
+  labs(title = "Observed Response Time vs Optimistic Estimation", 
+       x = "Time (s)", 
+       y = "Frequency")
+```
+
+```{r}
+# boxplot to compare five response time distributions
+observed_df <- data.frame(category = "Observed", value = x$observedTT_numeric)
+pred1_df <- data.frame(category = "Prediction GL", value = x$eTT.GL)
+pred2_df <- data.frame(category = "Prediction Pe", value = x$eTT.Pe)
+pred3_df <- data.frame(category = "Prediction BG", value = x$eTT.BG)
+pred4_df <- data.frame(category = "Prediction Op", value = x$eTT.Op)
+combined_df <- bind_rows(observed_df, pred1_df, pred2_df, pred3_df, pred4_df)
+
+ggplot(combined_df, aes(x = category, y = value, fill = category)) +
+  geom_boxplot() +
+  labs(title = "Observed Response Time vs Different Estimations", 
+       y = "Time (s)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### RMSE
+
+```{r}
+rmse1 <- sqrt(mean((observed_df$value - pred1_df$value)^2))
+rmse2 <- sqrt(mean((observed_df$value - pred2_df$value)^2))
+rmse3 <- sqrt(mean((observed_df$value - pred3_df$value)^2))
+rmse4 <- sqrt(mean((observed_df$value - pred4_df$value)^2))
+
+print(rmse1)
+print(rmse2)
+print(rmse3)
+print(rmse4)
+```
+
+#### The optimistic Google Map API has the best estimation among the four, based on the RMSE criteria.
+
+## Linear Regression (Obs vs Op)
+
+```{r}
+# perform the linear regression
+lm_model <- lm(observed_df$value ~ pred4_df$value)
+summary(lm_model)
+```
+
+```{r}
+# scatter plot
+ggplot(data = NULL, aes(x = pred4_df$value, y = observed_df$value)) +
+  geom_point() +
+  geom_abline(intercept = coef(lm_model)[1], 
+              slope = coef(lm_model)[2], 
+              color = "red") +
+  labs(title = "Observed Response Time vs Optimistic Estimation", 
+       x = "Optimistic Estimation", 
+       y = "Observed Response Time")
 ```
