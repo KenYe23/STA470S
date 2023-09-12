@@ -78,7 +78,8 @@ ggplot(df1, aes(x = value, fill = category)) +
   geom_histogram(position = "identity", alpha = 0.5) +
   labs(title = "Observed Response Time vs Green Light Estimation", 
        x = "Time (s)", 
-       y = "Frequency") 
+       y = "Frequency") +
+  scale_fill_manual(values = c("Obs" = "blue", "GL" = "red"))
 ```
 
 ```{r}
@@ -90,7 +91,8 @@ ggplot(df2, aes(x = value, fill = category)) +
   geom_histogram(position = "identity", alpha = 0.5) +
   labs(title = "Observed Response Time vs Pessimistic Estimation", 
        x = "Time (s)", 
-       y = "Frequency")
+       y = "Frequency") +
+  scale_fill_manual(values = c("Obs" = "blue", "Pe" = "red"))
 ```
 
 ```{r}
@@ -102,7 +104,8 @@ ggplot(df3, aes(x = value, fill = category)) +
   geom_histogram(position = "identity", alpha = 0.5) +
   labs(title = "Observed Response Time vs Best Guess Estimation", 
        x = "Time (s)", 
-       y = "Frequency")
+       y = "Frequency") +
+  scale_fill_manual(values = c("Obs" = "blue", "BG" = "red"))
 ```
 
 ```{r}
@@ -114,7 +117,8 @@ ggplot(df4, aes(x = value, fill = category)) +
   geom_histogram(position = "identity", alpha = 0.5) +
   labs(title = "Observed Response Time vs Optimistic Estimation", 
        x = "Time (s)", 
-       y = "Frequency")
+       y = "Frequency") +
+  scale_fill_manual(values = c("Obs" = "blue", "Op" = "red"))
 ```
 
 ```{r}
