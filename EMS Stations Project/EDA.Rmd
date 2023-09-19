@@ -151,8 +151,7 @@ print(rmse3)
 print(rmse4)
 ```
 
-The optimistic Google Map API has the best estimation among the four, based on
-the RMSE criteria.
+The optimistic Google Map API has the best estimation among the four, based on the RMSE criteria.
 
 ## Linear Regression (Obs vs Op)
 
