@@ -1,0 +1,98 @@
+---
+title: "Digital Assistant"
+author: "Ken Ye"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+# Step 1: Load Data
+
+```{r}
+# Load the dataset into a data frame
+df <- read.table("data.txt", header = TRUE)
+```
+
+# Step 2: Plot and Summarize the Data
+
+```{r}
+# Plot the data
+plot(df$Year, df$Pct, type = "l", xlab = "Year", ylab = "Passing Rate")
+```
+
+```{r}
+# Summarize the data
+summary(df$Pct)
+```
+
+# Step 3: Generate Derived Variables
+
+```{r}
+# Create a new column that classifies each year into one of three periods
+df$Period <- ifelse(df$Year <= 2003, "tp1",
+                    ifelse(df$Year > 2011, "tp3", "tp2"))
+
+# View the data frame
+df
+```
+
+# Step 4: Quasi-binomial
+
+```{r}
+# Fit a quasi-binomial model with the Period variable
+model <- glm(Pct ~ Period, data = df, family = quasibinomial)
+
+# Implement diagnostics
+par(mfrow = c(2, 2))
+plot(model)
+
+# Display tables of parameter summaries
+summary(model)
+```
+
+# Step 5: GLM
+
+```{r}
+# Fit a GLM with the Period variable
+model <- glm(Pct ~ Period, data = df, family = binomial)
+
+# Implement diagnostics
+par(mfrow = c(2, 2))
+plot(model)
+
+# Display tables of parameter summaries
+summary(model)
+```
+
+# Step 6: LM
+
+```{r}
+# Fit a linear regression model with the Period variable
+model <- lm(Pct ~ Period, data = df)
+
+# Implement diagnostics
+par(mfrow = c(2, 2))
+plot(model)
+
+# Display tables of parameter summaries
+summary(model)
+```
+
+# Step 7: Hypothesis Tests
+
+```{r}
+# Fit the three models
+model1 <- lm(Pct ~ 1, data = df)
+model2 <- lm(Pct ~ Period, data = df)
+model3 <- lm(Pct ~ Year + Period, data = df)
+
+# Test the three hypotheses using F tests
+anova(model1, model2, model3)
+
+# Test the stepwise constant hypothesis
+model_sc <- lm(Pct ~ Year + Period + Year:Period, data = df)
+summary(model_sc)
+
+# Test the piecewise linear hypothesis
+model_pl <- lm(Pct ~ Year + Period + I((Year - 2003)*(Year > 2003)) + I((Year - 2011)*(Year > 2011)), data = df)
+summary(model_pl)
+```
